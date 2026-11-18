@@ -2,6 +2,8 @@
    Sumber: daftar harga & stok toko Raidigital terakhir + produk contoh (is_sample).
    Harga dalam Rupiah (bilangan bulat). stock = null berarti tidak dilacak (selalu tersedia). */
 
+import { ASSETS } from "./assets-data";
+
 export const TYPE_INSTRUCTIONS = {
   topup: [
     "Pilih nominal yang kamu mau.",
@@ -55,7 +57,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "robux-800", name: "Robux 800", game: "Roblox", category: "topup", category_label: "Topup",
     type: "topup", popular: true, price: 159000, compare_at_price: 185000, stock: 42,
-    image: "/assets/img-628374c1ab.webp", image_alt: "Koin Robux emas di atas pedestal kaca", tile: null,
+    image: ASSETS["img-628374c1ab.webp"], image_alt: "Koin Robux emas di atas pedestal kaca", tile: null,
     description: "Saldo Robux masuk via gift resmi. Cocok untuk beli gamepass, skin, dan item katalog Roblox.",
     specs: ["Pengiriman via gift resmi Roblox", "Tanpa password — cukup username", "Proses 5–15 menit setelah pembayaran", "Garansi 100% bila Robux tidak masuk"],
     denoms: [{ label: "Robux 800", price: 159000 }],
@@ -65,7 +67,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "perm-dragon", name: "Permanent Dragon Fruit", game: "Blox Fruits", category: "item-trade", category_label: "Item Trade",
     type: "trade", popular: true, price: 949000, compare_at_price: 1099000, stock: 3,
-    image: "/assets/img-c4918eaed2.webp", image_alt: "Buah naga ungu berduri dengan sisik hijau", tile: null,
+    image: ASSETS["img-c4918eaed2.webp"], image_alt: "Buah naga ungu berduri dengan sisik hijau", tile: null,
     description: "Buah Dragon permanen — tidak hilang saat ganti buah. Item paling dicari di Blox Fruits.",
     specs: ["Buah permanen, aktif selamanya", "Dikirim via trade in-game", "Wajib sudah bisa akses trade (Sea 2/3)", "Garansi item masuk atau uang kembali"],
     denoms: [{ label: "Permanent Dragon", price: 949000 }],
@@ -74,7 +76,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "kitsune", name: "Kitsune Fruit (Fisik)", game: "Blox Fruits", category: "item-trade", category_label: "Item Trade",
     type: "trade", popular: false, price: 389000, compare_at_price: 450000, stock: 5,
-    image: "/assets/img-9b7b49d13f.webp", image_alt: "Buah biru bercahaya dengan sembilan ekor rubah", tile: null,
+    image: ASSETS["img-9b7b49d13f.webp"], image_alt: "Buah biru bercahaya dengan sembilan ekor rubah", tile: null,
     description: "Buah Kitsune fisik siap trade. Transformasi rubah berekor sembilan dengan damage besar.",
     specs: ["Buah fisik, siap trade", "Transformasi Kitsune berekor sembilan", "Dikirim via trade in-game", "Garansi item masuk atau uang kembali"],
     denoms: [{ label: "Kitsune Fruit", price: 389000 }],
@@ -83,7 +85,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "tiger", name: "Tiger Fruit (Fisik)", game: "Blox Fruits", category: "item-trade", category_label: "Item Trade",
     type: "trade", popular: false, price: 219000, compare_at_price: 265000, stock: 8,
-    image: "/assets/img-0bc12e96a0.webp", image_alt: "Buah bermotif macan oranye bercahaya", tile: null,
+    image: ASSETS["img-0bc12e96a0.webp"], image_alt: "Buah bermotif macan oranye bercahaya", tile: null,
     description: "Buah Tiger fisik siap trade. Salah satu buah tercepat untuk grinding dan PvP.",
     specs: ["Buah fisik, siap trade", "Mobilitas tinggi untuk grinding & PvP", "Dikirim via trade in-game", "Garansi item masuk atau uang kembali"],
     denoms: [{ label: "Tiger Fruit", price: 219000 }],
@@ -92,7 +94,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "phoenix", name: "Phoenix Fruit (Fisik)", game: "Blox Fruits", category: "item-trade", category_label: "Item Trade",
     type: "trade", popular: true, price: 79000, compare_at_price: 99000, stock: 15,
-    image: "/assets/img-374ac7fa9b.webp", image_alt: "Buah phoenix biru es bersayap bercahaya", tile: null,
+    image: ASSETS["img-374ac7fa9b.webp"], image_alt: "Buah phoenix biru es bersayap bercahaya", tile: null,
     description: "Buah Phoenix fisik siap trade. Bisa heal tim — favorit untuk raid dan dungeon.",
     specs: ["Buah fisik, siap trade", "Kemampuan heal untuk tim", "Favorit untuk raid & dungeon", "Garansi item masuk atau uang kembali"],
     denoms: [{ label: "Phoenix Fruit", price: 79000 }],
@@ -101,7 +103,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "dark-blade", name: "Dark Blade (Yoru)", game: "Blox Fruits", category: "item-trade", category_label: "Item Trade",
     type: "trade", popular: true, price: 235000, compare_at_price: 279000, stock: 10,
-    image: "/assets/img-221124da53.webp", image_alt: "Katana hitam dengan bilah energi hijau", tile: null,
+    image: ASSETS["img-221124da53.webp"], image_alt: "Katana hitam dengan bilah energi hijau", tile: null,
     description: "Gamepass pedang Yoru legendaris. Dikirim via gift, langsung aktif permanen.",
     specs: ["Gamepass resmi via gift", "Aktif permanen di akunmu", "Pedang terkuat untuk PvP", "Garansi aktif atau uang kembali"],
     denoms: [{ label: "Dark Blade (Yoru)", price: 235000 }],
@@ -111,7 +113,7 @@ export const SEED_PRODUCTS = [
   {
     slug: "exp-boost", name: "2x EXP Boost (1 Jam)", game: "Blox Fruits", category: "item-trade", category_label: "Item Trade",
     type: "trade", popular: false, price: 45000, compare_at_price: 60000, stock: 25,
-    image: "/assets/img-8c683e7fd1.webp", image_alt: "Ramuan boost EXP ungu bercahaya dengan emblem petir", tile: null,
+    image: ASSETS["img-8c683e7fd1.webp"], image_alt: "Ramuan boost EXP ungu bercahaya dengan emblem petir", tile: null,
     description: "Boost EXP dua kali lipat selama 1 jam. Grinding level jadi jauh lebih cepat.",
     specs: ["EXP x2 selama 1 jam penuh", "Dikirim via gift in-game", "Bisa ditumpuk dengan event EXP", "Aktif sejak diterima"],
     denoms: [{ label: "2x EXP Boost — 1 Jam", price: 45000 }],

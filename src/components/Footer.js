@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LOGO } from "../lib/assets-data";
 
 export default function Footer() {
   return (
@@ -7,7 +8,7 @@ export default function Footer() {
         <div>
           <b style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "1.02rem" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="logo-mark" src="/assets/logo-38a70cd657.png" alt="" style={{ width: 26, height: 26 }} /> RaiDigi
+            <img className="logo-mark" src={LOGO} alt="" style={{ width: 26, height: 26 }} /> RaiDigi
           </b>
           <p style={{ margin: "8px 0 0" }}>
             Platform jual beli produk digital terpercaya — topup game, akun premium, voucher, dan item digital. Admin

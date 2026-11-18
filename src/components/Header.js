@@ -7,6 +7,7 @@ import { Icon } from "./icons";
 import { Thumb } from "./thumb";
 import { useStore } from "./store";
 import { fmtIDR } from "../lib/format";
+import { LOGO } from "../lib/assets-data";
 
 const NAV = [
   { href: "/", label: "Beranda", icon: "i-home", match: (p) => p === "/" },
@@ -77,7 +78,7 @@ export default function Header() {
         <div className="wrap topbar-in">
           <Link className="logo" href="/" aria-label="RaiDigi — Beranda">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="logo-mark" src="/assets/logo-38a70cd657.png" alt="" />
+            <img className="logo-mark" src={LOGO} alt="" />
             <span className="logo-name">RaiDigi</span>
           </Link>
           <nav className="topnav" aria-label="Navigasi utama">

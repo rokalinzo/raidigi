@@ -28,6 +28,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# images live embedded as data URIs in src/lib/assets-data.js (repo sync is
+# text-only, no binaries); public/assets/ is only the local source folder
+# used by scripts/gen-assets.mjs to regenerate that module
+/public/assets/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

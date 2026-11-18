@@ -3,6 +3,7 @@ import { listProducts } from "../lib/db";
 import { Icon } from "../components/icons";
 import ProductCard from "../components/ProductCard";
 import PromoCarousel from "../components/PromoCarousel";
+import { IMG_628374C1AB } from "../lib/assets-data";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function HomePage() {
           </div>
           <div className="hero-visual" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="hv-main" src="/assets/img-628374c1ab.webp" alt="" />
+            <img className="hv-main" src={IMG_628374C1AB} alt="" />
             <div className="hv-chip c1">
               <Icon name="i-zap" />
               <span>

@@ -363,7 +363,7 @@ export default function AdminPage() {
                   <input className="input" type="number" value={editing.sort_order} onChange={(e) => setEditing({ ...editing, sort_order: e.target.value })} />
                 </div>
                 <div className="field">
-                  <label>Path Gambar (mis. /assets/img-xxx.webp)</label>
+                  <label>Gambar (URL gambar atau data URI)</label>
                   <input className="input" value={editing.image || ""} onChange={(e) => setEditing({ ...editing, image: e.target.value })} />
                 </div>
               </div>

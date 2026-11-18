@@ -107,6 +107,12 @@ dalam Bahasa Indonesia dan semua harga dalam Rupiah (IDR).
 - **Produk “Contoh”:** 8 dari 16 produk seed bertanda `is_sample` (label
   “Contoh”) — data demo untuk pratinjau katalog. Nonaktifkan atau ganti
   lewat panel admin sebelum go-live bila tidak diperlukan.
+- **Gambar tertanam (data URI):** logo dan gambar produk tidak disimpan
+  sebagai file biner, melainkan tertanam sebagai data URI di
+  `src/lib/assets-data.js` — karena jalur sinkronisasi repo hanya mendukung
+  file teks UTF-8. Untuk mengganti gambar: taruh file barunya di folder
+  `public/assets/` (folder lokal, terdaftar di `.gitignore`), lalu jalankan
+  `node scripts/gen-assets.mjs` dan commit hasilnya.
 
 ## Struktur Singkat
 
@@ -122,5 +128,9 @@ src/
     bayar.js      klien API Bayar.gg (server-side saja)
     verify.js     sinkronisasi status pembayaran terverifikasi
     format.js     format IDR, tanggal, label status
-public/assets/    logo resmi + gambar produk
+    assets-data.js  logo + gambar produk tertanam sebagai data URI
+                    (dibangkitkan oleh scripts/gen-assets.mjs — jangan
+                    disunting manual)
+scripts/
+  gen-assets.mjs  membangkitkan src/lib/assets-data.js dari public/assets/
 ```

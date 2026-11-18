@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "./icons";
+import { IMG_429B7EA37F, IMG_628374C1AB } from "../lib/assets-data";
 
 const SLIDES = [
   {
     slug: "ml-diamond",
-    img: "/assets/img-429b7ea37f.webp",
+    img: IMG_429B7EA37F,
     alt: "Ilustrasi karakter anime berambut perak untuk promo topup game",
     tag: "Topup Game",
     flip: false,
@@ -22,7 +23,7 @@ const SLIDES = [
   },
   {
     slug: "robux-800",
-    img: "/assets/img-628374c1ab.webp",
+    img: IMG_628374C1AB,
     alt: "Koin Robux emas di atas pedestal kaca",
     tag: "Roblox",
     flip: true,
