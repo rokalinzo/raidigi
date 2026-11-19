@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listProducts } from "../lib/db";
+import { listProducts, listPromos } from "../lib/db";
 import { Icon } from "../components/icons";
 import ProductCard from "../components/ProductCard";
 import PromoCarousel from "../components/PromoCarousel";
@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const products = await listProducts();
   const popular = products.filter((p) => p.popular);
+  const promos = await listPromos().catch(() => []);
 
   return (
     <div className="wrap">
@@ -115,7 +116,7 @@ export default async function HomePage() {
           Lihat Semua <Icon name="i-chev-r" />
         </Link>
       </div>
-      <PromoCarousel />
+      <PromoCarousel promos={promos} />
 
       <div className="sec-head">
         <h2>

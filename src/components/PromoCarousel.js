@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Icon } from "./icons";
 import { IMG_429B7EA37F, IMG_628374C1AB } from "../lib/assets-data";
 
+/* Promo bawaan — hanya tampil selama admin belum menambahkan promo
+   aktif apa pun lewat panel admin (tab Promo). */
 const SLIDES = [
   {
     slug: "ml-diamond",
@@ -53,20 +55,37 @@ const SLIDES = [
   },
 ];
 
-export default function PromoCarousel() {
+export default function PromoCarousel({ promos }) {
   const router = useRouter();
   const trackRef = useRef(null);
   const [idx, setIdx] = useState(0);
 
+  // Promo dari panel admin (tabel promos) menggantikan promo bawaan
+  // begitu ada minimal satu promo aktif bergambar + bertujuan produk.
+  const dbSlides = (Array.isArray(promos) ? promos : [])
+    .filter((p) => p && p.image && p.product_slug)
+    .map((p) => ({
+      key: "promo-" + p.id,
+      slug: p.product_slug,
+      img: p.image,
+      alt: p.title || "Promo RaiDigi",
+      tag: p.tag || "",
+      flip: false,
+      title: p.title || null,
+      cta: p.cta || "Lihat Promo",
+    }));
+  const slides = dbSlides.length > 0 ? dbSlides : SLIDES.map((s) => ({ ...s, key: s.slug }));
+  const count = slides.length;
+
   useEffect(() => {
     const timer = setInterval(() => {
       const track = trackRef.current;
-      if (!track || document.hidden) return;
-      const next = (Math.round(track.scrollLeft / track.clientWidth) + 1) % SLIDES.length;
+      if (!track || document.hidden || count < 2) return;
+      const next = (Math.round(track.scrollLeft / track.clientWidth) + 1) % count;
       track.scrollTo({ left: next * track.clientWidth, behavior: "smooth" });
     }, 4500);
     return () => clearInterval(timer);
-  }, []);
+  }, [count]);
 
   return (
     <>
@@ -75,10 +94,10 @@ export default function PromoCarousel() {
         ref={trackRef}
         onScroll={(e) => setIdx(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
       >
-        {SLIDES.map((s) => (
+        {slides.map((s) => (
           <button
             className={"promo-slide" + (s.flip ? " flip" : "")}
-            key={s.slug}
+            key={s.key}
             onClick={() => router.push(`/produk/${s.slug}`)}
             style={s.img ? undefined : { background: "#1D1230" }}
           >
@@ -88,8 +107,8 @@ export default function PromoCarousel() {
             )}
             {s.img && <span className="shade" />}
             <span className="p-copy" style={s.img ? undefined : { width: "100%", padding: "18px 20px" }}>
-              <span className="promo-tag">{s.tag}</span>
-              <h3>{s.title}</h3>
+              {s.tag && <span className="promo-tag">{s.tag}</span>}
+              {s.title && <h3>{s.title}</h3>}
               <span className="p-cta">
                 {s.cta} <Icon name="i-arrow-r" />
               </span>
@@ -98,9 +117,9 @@ export default function PromoCarousel() {
         ))}
       </div>
       <div className="promo-dots">
-        {SLIDES.map((s, i) => (
+        {slides.map((s, i) => (
           <button
-            key={s.slug}
+            key={s.key}
             aria-label={"Promo " + (i + 1)}
             className={i === idx ? "on" : ""}
             onClick={() => trackRef.current?.scrollTo({ left: i * trackRef.current.clientWidth, behavior: "smooth" })}

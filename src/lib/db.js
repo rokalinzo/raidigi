@@ -144,6 +144,19 @@ export async function ensureDb() {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )`;
       await sql`
+        CREATE TABLE IF NOT EXISTS promos (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL DEFAULT '',
+          tag TEXT NOT NULL DEFAULT '',
+          image TEXT,
+          product_slug TEXT NOT NULL DEFAULT '',
+          cta TEXT NOT NULL DEFAULT 'Lihat Promo',
+          active BOOLEAN NOT NULL DEFAULT true,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+      await sql`
         CREATE TABLE IF NOT EXISTS order_items (
           id SERIAL PRIMARY KEY,
           order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -254,6 +267,66 @@ export async function adminDeleteProduct(id) {
   // dihapus permanen — riwayat transaksi tidak rusak.
   await sql`UPDATE order_items SET product_id = NULL WHERE product_id = ${id}`;
   await sql`DELETE FROM products WHERE id = ${id}`;
+  return rows[0];
+}
+
+/* ---------------- Promos ----------------
+   Banner "Promo Terbaru" di beranda, dikelola dari panel admin.
+   image boleh URL atau data URI (hasil unggahan admin); product_slug
+   adalah tujuan klik banner di etalase. */
+
+export function normalizePromo(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    active: row.active !== false,
+    sort_order: Number(row.sort_order || 0),
+  };
+}
+
+export async function listPromos({ includeInactive = false } = {}) {
+  const sql = getSql();
+  if (!sql) return [];
+  await ensureDb();
+  const rows = includeInactive
+    ? await sql`SELECT * FROM promos ORDER BY sort_order ASC, id ASC`
+    : await sql`SELECT * FROM promos WHERE active = true ORDER BY sort_order ASC, id ASC`;
+  return rows.map(normalizePromo);
+}
+
+export async function adminCreatePromo(p) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    INSERT INTO promos (title, tag, image, product_slug, cta, active, sort_order)
+    VALUES (${p.title || ""}, ${p.tag || ""}, ${p.image || null}, ${p.product_slug}, ${p.cta || "Lihat Promo"},
+      ${p.active !== false}, ${p.sort_order || 0})
+    RETURNING *`;
+  return normalizePromo(rows[0]);
+}
+
+export async function adminUpdatePromo(id, p) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    UPDATE promos SET
+      title = ${p.title || ""}, tag = ${p.tag || ""}, image = ${p.image || null},
+      product_slug = ${p.product_slug}, cta = ${p.cta || "Lihat Promo"},
+      active = ${p.active !== false}, sort_order = ${p.sort_order || 0}, updated_at = now()
+    WHERE id = ${id}
+    RETURNING *`;
+  return rows.length ? normalizePromo(rows[0]) : null;
+}
+
+export async function adminDeletePromo(id) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`SELECT id, title FROM promos WHERE id = ${id} LIMIT 1`;
+  if (!rows.length) return null;
+  await sql`DELETE FROM promos WHERE id = ${id}`;
   return rows[0];
 }
 

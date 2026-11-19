@@ -21,6 +21,10 @@ const NEXT_ACTIONS = {
   kedaluwarsa: [],
 };
 
+function blankPromo() {
+  return { title: "", tag: "", image: "", product_slug: "", cta: "Lihat Promo", active: true, sort_order: 0 };
+}
+
 function blankProduct() {
   return {
     slug: "", name: "", game: "", category: "topup", category_label: "Topup", type: "topup",
@@ -53,6 +57,10 @@ export default function AdminPage() {
   const [tab, setTab] = useState("pesanan");
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [promos, setPromos] = useState([]);
+  const [editingPromo, setEditingPromo] = useState(null); // form promo | null
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [promoFormError, setPromoFormError] = useState("");
   const [dataError, setDataError] = useState("");
   const [editing, setEditing] = useState(null); // form object | null
   const [saving, setSaving] = useState(false);
@@ -61,13 +69,15 @@ export default function AdminPage() {
   const loadAll = useCallback(async () => {
     setDataError("");
     try {
-      const [o, p] = await Promise.all([
+      const [o, p, pr] = await Promise.all([
         fetch("/api/admin/orders", { cache: "no-store" }).then((r) => r.json()),
         fetch("/api/admin/products", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/admin/promos", { cache: "no-store" }).then((r) => r.json()),
       ]);
       if (o.error) setDataError(o.error);
       else setOrders(o.orders || []);
       if (!p.error) setProducts(p.products || []);
+      if (!pr.error) setPromos(pr.promos || []);
     } catch {
       setDataError("Gagal memuat data admin.");
     }
@@ -172,6 +182,70 @@ export default function AdminPage() {
     setProducts((prev) => prev.filter((x) => x.id !== p.id));
   }
 
+  function onPromoImageFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Berkas harus berupa gambar (JPG/PNG/WebP).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result || "");
+      if (file.size <= 900 * 1024) {
+        setEditingPromo((cur) => (cur ? { ...cur, image: url } : cur));
+        return;
+      }
+      // Gambar besar diperkecil dulu (lebar maks 1200px, JPEG) supaya
+      // banner tetap ringan dimuat di beranda.
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1200 / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        setEditingPromo((cur) => (cur ? { ...cur, image: canvas.toDataURL("image/jpeg", 0.85) } : cur));
+      };
+      img.src = url;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function savePromo(e) {
+    e.preventDefault();
+    setPromoFormError("");
+    setPromoSaving(true);
+    const isNew = !editingPromo.id;
+    const res = await fetch(isNew ? "/api/admin/promos" : `/api/admin/promos/${editingPromo.id}`, {
+      method: isNew ? "POST" : "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingPromo),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPromoSaving(false);
+    if (!res.ok) {
+      setPromoFormError(data.error || "Gagal menyimpan promo.");
+      return;
+    }
+    setEditingPromo(null);
+    loadAll();
+  }
+
+  async function deletePromo(pr) {
+    const yakin = window.confirm(
+      `Hapus permanen promo "${pr.title || pr.product_slug}"?\n\nBanner akan hilang dari panel admin dan beranda, dan tidak bisa dibatalkan.`
+    );
+    if (!yakin) return;
+    const res = await fetch(`/api/admin/promos/${pr.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || "Gagal menghapus promo.");
+      return;
+    }
+    setPromos((prev) => prev.filter((x) => x.id !== pr.id));
+  }
+
   if (state === "loading") {
     return (
       <div className="wrap">
@@ -229,6 +303,9 @@ export default function AdminPage() {
         </button>
         <button className={"chip" + (tab === "produk" ? " on" : "")} onClick={() => setTab("produk")}>
           Produk ({products.length})
+        </button>
+        <button className={"chip" + (tab === "promo" ? " on" : "")} onClick={() => setTab("promo")}>
+          Promo ({promos.length})
         </button>
         <button className="chip" onClick={loadAll}>
           Muat Ulang
@@ -494,6 +571,162 @@ export default function AdminPage() {
                             Ubah
                           </button>
                           <button className="btn btn-ghost btn-sm" onClick={() => deleteProduct(p)}>
+                            Hapus
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "promo" && (
+        <>
+          <p className="page-sub" style={{ marginBottom: 12 }}>
+            Banner di bagian <b>Promo Terbaru</b> beranda — klik banner membuka halaman produk tujuannya. Selama
+            belum ada promo aktif di sini, beranda menampilkan promo bawaan.
+          </p>
+          {!editingPromo && (
+            <button className="btn btn-gold" style={{ marginBottom: 14 }} onClick={() => setEditingPromo(blankPromo())}>
+              + Promo Baru
+            </button>
+          )}
+          {editingPromo ? (
+            <form className="panel" onSubmit={savePromo}>
+              <h3>{editingPromo.id ? `Ubah Promo — ${editingPromo.title || editingPromo.product_slug}` : "Promo Baru"}</h3>
+              {promoFormError && (
+                <div className="alert error">
+                  <Icon name="i-info" />
+                  <span>{promoFormError}</span>
+                </div>
+              )}
+              <div className="field">
+                <label>Gambar Banner</label>
+                {editingPromo.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={editingPromo.image}
+                    alt="Pratinjau banner promo"
+                    style={{ display: "block", width: "100%", maxWidth: 480, maxHeight: 200, objectFit: "cover", borderRadius: 12, marginBottom: 10 }}
+                  />
+                )}
+                <input className="input" type="file" accept="image/*" onChange={onPromoImageFile} />
+                <p className="hint">
+                  Unggah gambar buatanmu (mis. banner Fish It diskon). Gambar besar otomatis diperkecil ke lebar maks
+                  1200px. Atau tempel URL gambar di bawah ini.
+                </p>
+                <input
+                  className="input"
+                  placeholder="https://… (URL gambar, opsional bila sudah unggah)"
+                  value={editingPromo.image && editingPromo.image.startsWith("http") ? editingPromo.image : ""}
+                  onChange={(e) => setEditingPromo({ ...editingPromo, image: e.target.value })}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="field">
+                  <label>Produk Tujuan (saat banner diklik)</label>
+                  <select
+                    className="input"
+                    value={editingPromo.product_slug}
+                    onChange={(e) => setEditingPromo({ ...editingPromo, product_slug: e.target.value })}
+                    required
+                  >
+                    <option value="">— Pilih produk —</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.slug}>
+                        {p.name} ({p.slug}){p.active ? "" : " — nonaktif"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Urutan Tampil</label>
+                  <input className="input" type="number" value={editingPromo.sort_order} onChange={(e) => setEditingPromo({ ...editingPromo, sort_order: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label>Judul Promo (opsional, tampil di atas gambar)</label>
+                  <input
+                    className="input"
+                    value={editingPromo.title}
+                    onChange={(e) => setEditingPromo({ ...editingPromo, title: e.target.value })}
+                    placeholder="Kosongkan bila judul sudah ada di dalam gambar"
+                  />
+                </div>
+                <div className="field">
+                  <label>Tag Kecil (opsional)</label>
+                  <input className="input" value={editingPromo.tag} onChange={(e) => setEditingPromo({ ...editingPromo, tag: e.target.value })} placeholder="Mis. Fish It" />
+                </div>
+                <div className="field">
+                  <label>Teks Tombol</label>
+                  <input className="input" value={editingPromo.cta} onChange={(e) => setEditingPromo({ ...editingPromo, cta: e.target.value })} />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 18, flexWrap: "wrap", margin: "6px 0 14px" }}>
+                <label className="switch-row">
+                  <input type="checkbox" checked={editingPromo.active} onChange={(e) => setEditingPromo({ ...editingPromo, active: e.target.checked })} /> Aktif
+                  (tampil di beranda)
+                </label>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className="btn btn-gold" type="submit" disabled={promoSaving}>
+                  {promoSaving ? "Menyimpan…" : "Simpan Promo"}
+                </button>
+                <button className="btn btn-ghost" type="button" onClick={() => setEditingPromo(null)}>
+                  Batal
+                </button>
+              </div>
+            </form>
+          ) : promos.length === 0 ? (
+            <div className="empty-state">
+              <Icon name="i-ticket" />
+              <b>Belum ada promo dari panel</b>
+              <p>Tambahkan banner pertamamu — beranda otomatis memakainya, menggantikan promo bawaan.</p>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Banner</th>
+                    <th>Tujuan</th>
+                    <th>Urutan</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {promos.map((pr) => (
+                    <tr key={pr.id}>
+                      <td>
+                        {pr.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={pr.image}
+                            alt={pr.title || "Banner promo"}
+                            style={{ display: "block", width: 120, height: 60, objectFit: "cover", borderRadius: 8, marginBottom: 6 }}
+                          />
+                        )}
+                        <b style={{ color: "var(--text)" }}>{pr.title || "(tanpa judul)"}</b>
+                        {pr.tag && (
+                          <>
+                            <br />
+                            <span style={{ color: "var(--muted)", fontSize: ".78rem" }}>{pr.tag}</span>
+                          </>
+                        )}
+                      </td>
+                      <td>/produk/{pr.product_slug}</td>
+                      <td>{pr.sort_order}</td>
+                      <td>{pr.active ? <span className="chip-static">Aktif</span> : <span className="chip-static">Nonaktif</span>}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setEditingPromo({ ...pr })}>
+                            Ubah
+                          </button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => deletePromo(pr)}>
                             Hapus
                           </button>
                         </div>
