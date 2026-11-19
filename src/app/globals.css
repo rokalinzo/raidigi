@@ -184,11 +184,10 @@
       .promo-slide.flip .shade{background:rgba(11,7,20,.62)}
       .promo-slide.flip .p-copy{right:auto; left:0; padding:12px 6px 12px 14px}
       /* Banner dari panel admin: gambar adalah desain utuh, jadi teks
-         overlay ditata simetris di tengah (bukan kolom samping). */
+         overlay ditata mepet kiri secara vertikal di tengah. */
       .promo-slide.banner img.bg{object-position:center}
       .promo-slide.banner .shade{background:rgba(11,7,20,.5)}
-      .promo-slide.banner .p-copy{left:0; right:0; width:100%; align-items:center; text-align:center; padding:14px 18px}
-      .promo-slide.banner .promo-tag{align-self:center}
+      .promo-slide.banner .p-copy{left:0; right:0; width:100%; align-items:flex-start; text-align:left; padding:14px 16px}
       .promo-slide.banner.cta-only .p-copy{justify-content:flex-end; padding-bottom:14px}
       .promo-tag{align-self:flex-start; background:var(--brand); color:#FFFFFF; font-size:.64rem; font-weight:800; padding:3px 8px; border-radius:999px; margin-bottom:6px}
       .promo-slide h3{margin:0; font-size:.96rem; line-height:1.3; font-weight:700}
