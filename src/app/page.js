@@ -3,7 +3,7 @@ import { listProducts, listPromos } from "../lib/db";
 import { Icon } from "../components/icons";
 import ProductCard from "../components/ProductCard";
 import PromoCarousel from "../components/PromoCarousel";
-import { IMG_628374C1AB } from "../lib/assets-data";
+import { IMG_7F3A9C1E } from "../lib/assets-data";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export default async function HomePage() {
         <div className="hero-grid">
           <div className="hero-copy">
             <h1>
-              Semua Kebutuhan Digital, <span className="gold">Satu Tempat.</span>
+              Semua Kebutuhan Digital, <span className="gold">di Satu Tempat.</span>
             </h1>
             <p>Topup game, akun premium, voucher, dan item digital dengan proses cepat dan aman.</p>
             <Link className="btn btn-gold" href="/kategori">
@@ -38,7 +38,7 @@ export default async function HomePage() {
           </div>
           <div className="hero-visual" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="hv-main" src={IMG_628374C1AB} alt="" />
+            <img className="hv-main" src={IMG_7F3A9C1E} alt="" />
             <div className="hv-chip c1">
               <Icon name="i-zap" />
               <span>
