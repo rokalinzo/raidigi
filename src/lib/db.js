@@ -27,8 +27,38 @@ function parseJson(v, fallback) {
   return v;
 }
 
+/* Kolom data bawaan untuk produk topup yang form_fields-nya kosong
+   (mis. produk yang dibuat dari panel admin, yang belum punya editor
+   kolom). Tanpa ini pembeli tidak dimintai User ID/UID sama sekali,
+   jadi topup tidak bisa dikirim. */
+function defaultTopupFields(row) {
+  const g = `${row.game || ""} ${row.name || ""}`.toLowerCase();
+  if (g.includes("mobile legends"))
+    return [
+      { key: "userId", label: "User ID", ph: "Contoh: 12345678", hint: "Lihat di profil game, di bawah avatar.", required: true },
+      { key: "zoneId", label: "Zone ID (Server)", ph: "Contoh: 1234", hint: "Angka di dalam kurung setelah User ID.", required: true },
+    ];
+  if (g.includes("free fire"))
+    return [
+      { key: "playerId", label: "Player ID", ph: "Masukkan Player ID Free Fire", hint: "Buka profil di game untuk melihat Player ID.", required: true },
+    ];
+  if (g.includes("valorant"))
+    return [
+      { key: "riotId", label: "Riot ID", ph: "Nama Riot ID kamu", hint: "Contoh: RaiDigi", required: true },
+      { key: "tag", label: "Tagline", ph: "Contoh: 1234", hint: "Angka setelah tanda # pada Riot ID.", required: true },
+    ];
+  if (g.includes("roblox"))
+    return [
+      { key: "username", label: "Username Roblox", ph: "Masukkan username Roblox kamu", hint: "Pastikan ejaan username benar. Kami tidak pernah meminta password.", required: true },
+    ];
+  return [
+    { key: "userId", label: "User ID / Username", ph: "Masukkan User ID atau username akun game kamu", hint: "Pastikan data benar agar topup tidak salah kirim.", required: true },
+  ];
+}
+
 export function normalizeProduct(row) {
   if (!row) return null;
+  const parsedFields = parseJson(row.form_fields, []);
   return {
     ...row,
     price: Number(row.price),
@@ -36,7 +66,10 @@ export function normalizeProduct(row) {
     stock: row.stock === null || row.stock === undefined ? null : Number(row.stock),
     specs: parseJson(row.specs, []),
     denoms: parseJson(row.denoms, []),
-    form_fields: parseJson(row.form_fields, []),
+    form_fields:
+      row.type === "topup" && (!parsedFields || parsedFields.length === 0)
+        ? defaultTopupFields(row)
+        : parsedFields,
     tile: parseJson(row.tile, null),
     popular: !!row.popular,
     qty_allowed: !!row.qty_allowed,

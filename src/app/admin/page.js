@@ -38,6 +38,9 @@ function toForm(p) {
     denoms: (p.denoms && p.denoms.length ? p.denoms : [{ label: p.name, price: p.price }]).map((d) => ({
       label: d.label, price: d.price, note: d.note || "",
     })),
+    form_fields: (p.form_fields || []).map((f) => ({
+      key: f.key || "", label: f.label || "", ph: f.ph || "", hint: f.hint || "", required: !!f.required,
+    })),
   };
 }
 
@@ -128,6 +131,15 @@ export default function AdminPage() {
       specs: editing.specsText,
       stock: editing.stock === "" ? null : parseInt(editing.stock, 10),
       denoms: editing.denoms.filter((d) => d.label.trim()),
+      form_fields: (editing.form_fields || [])
+        .filter((f) => (f.label || "").trim())
+        .map((f) => ({
+          key: f.key || f.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+          label: f.label.trim(),
+          ph: f.ph || "",
+          hint: f.hint || "",
+          required: !!f.required,
+        })),
     };
     delete payload.specsText;
     const isNew = !editing.id;
@@ -404,6 +416,26 @@ export default function AdminPage() {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, denoms: [...editing.denoms, { label: "", price: 0, note: "" }] })}>
                   + Denominasi
                 </button>
+              </div>
+              <div className="field">
+                <label>Kolom Data Pembeli (diisi pembeli di halaman produk, mis. User ID / Username)</label>
+                {(editing.form_fields || []).map((f, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1.3fr 1.3fr 1.6fr auto auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                    <input className="input" placeholder="Label (mis. User ID)" value={f.label} onChange={(e) => { const form_fields = [...editing.form_fields]; form_fields[i] = { ...f, label: e.target.value }; setEditing({ ...editing, form_fields }); }} />
+                    <input className="input" placeholder="Placeholder" value={f.ph || ""} onChange={(e) => { const form_fields = [...editing.form_fields]; form_fields[i] = { ...f, ph: e.target.value }; setEditing({ ...editing, form_fields }); }} />
+                    <input className="input" placeholder="Petunjuk (opsional)" value={f.hint || ""} onChange={(e) => { const form_fields = [...editing.form_fields]; form_fields[i] = { ...f, hint: e.target.value }; setEditing({ ...editing, form_fields }); }} />
+                    <label className="switch-row">
+                      <input type="checkbox" checked={!!f.required} onChange={(e) => { const form_fields = [...editing.form_fields]; form_fields[i] = { ...f, required: e.target.checked }; setEditing({ ...editing, form_fields }); }} /> Wajib
+                    </label>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, form_fields: editing.form_fields.filter((_, x) => x !== i) })}>
+                      Hapus
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, form_fields: [...(editing.form_fields || []), { key: "", label: "", ph: "", hint: "", required: true }] })}>
+                  + Kolom Data
+                </button>
+                <p className="hint">Produk topup yang kolomnya dikosongkan otomatis memakai kolom bawaan sesuai game (Mobile Legends: User ID + Zone ID; Roblox: Username; Free Fire: Player ID).</p>
               </div>
               <div style={{ display: "flex", gap: 18, flexWrap: "wrap", margin: "6px 0 14px" }}>
                 <label className="switch-row">
