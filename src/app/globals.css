@@ -95,9 +95,9 @@
       .btn-ghost:hover{border-color:var(--gold); color:var(--gold)}
       .btn-block{width:100%}
       .btn[disabled]{opacity:.45; pointer-events:none}
-      .hero-visual{position:relative; min-height:175px}
+      .hero-visual{position:relative; min-height:205px}
       .hero-visual .hv-main{
-        position:absolute; right:14px; bottom:0; width:min(64%,300px); aspect-ratio:4/3;
+        position:absolute; left:50%; transform:translateX(-50%); bottom:0; width:min(92%,360px); aspect-ratio:16/9;
         object-fit:cover; border-radius:18px 18px 0 0; border:1px solid var(--border); border-bottom:0;
         box-shadow:var(--shadow);
       }
@@ -115,7 +115,7 @@
         .hero-copy{padding:44px 40px 30px}
         .hero h1{font-size:2.45rem}
         .hero-visual{min-height:320px}
-        .hero-visual .hv-main{width:min(78%,380px)}
+        .hero-visual .hv-main{width:min(94%,460px)}
         .hv-chip.c1{top:34px; left:8px}
         .hv-chip.c2{bottom:34px; left:0}
       }
