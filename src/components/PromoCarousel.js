@@ -71,6 +71,7 @@ export default function PromoCarousel({ promos }) {
       alt: p.title || "Promo RaiDigi",
       tag: p.tag || "",
       flip: false,
+      banner: true,
       title: p.title || null,
       cta: p.cta || "Lihat Promo",
     }));
@@ -96,7 +97,12 @@ export default function PromoCarousel({ promos }) {
       >
         {slides.map((s) => (
           <button
-            className={"promo-slide" + (s.flip ? " flip" : "")}
+            className={
+              "promo-slide" +
+              (s.flip ? " flip" : "") +
+              (s.banner ? " banner" : "") +
+              (s.banner && !s.title && !s.tag ? " cta-only" : "")
+            }
             key={s.key}
             onClick={() => router.push(`/produk/${s.slug}`)}
             style={s.img ? undefined : { background: "#1D1230" }}
