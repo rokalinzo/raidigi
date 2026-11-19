@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "../../../components/icons";
 import { Thumb } from "../../../components/thumb";
@@ -15,6 +15,40 @@ export default function DetailClient({ product: p }) {
   const [qty, setQty] = useState(1);
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
+
+  // Cek nickname ML: hanya untuk produk yang punya kolom User ID + Zone ID.
+  const fieldKeys = (p.form_fields || []).map((f) => f.key);
+  const canCheckMl = fieldKeys.includes("userId") && fieldKeys.includes("zoneId");
+  const [nick, setNick] = useState({ status: "idle", name: "", country: null, error: "" });
+
+  useEffect(() => {
+    setNick({ status: "idle", name: "", country: null, error: "" });
+  }, [values.userId, values.zoneId]);
+
+  async function checkNickname() {
+    const userId = (values.userId || "").trim();
+    const zoneId = (values.zoneId || "").trim();
+    if (!userId || !zoneId) {
+      toast("Isi dulu User ID dan Zone ID-nya", "i-info");
+      return;
+    }
+    setNick({ status: "loading", name: "", country: null, error: "" });
+    try {
+      const res = await fetch(
+        `/api/check-ml?userId=${encodeURIComponent(userId)}&zoneId=${encodeURIComponent(zoneId)}`
+      );
+      const data = await res.json();
+      if (data.success) {
+        setNick({ status: "found", name: data.nickname, country: data.country, error: "" });
+      } else if (res.status === 502) {
+        setNick({ status: "error", name: "", country: null, error: data.error || "Layanan cek nickname sedang tidak tersedia." });
+      } else {
+        setNick({ status: "notfound", name: "", country: null, error: data.error || "Nickname tidak ditemukan." });
+      }
+    } catch {
+      setNick({ status: "error", name: "", country: null, error: "Layanan cek nickname sedang tidak tersedia." });
+    }
+  }
 
   const denom = p.denoms[denomIdx] || p.denoms[0] || { label: p.name, price: p.price };
   const total = denom.price * qty;
@@ -39,6 +73,7 @@ export default function DetailClient({ product: p }) {
       const v = (values[f.key] || "").trim();
       if (v) formData[f.label] = v;
     });
+    if (canCheckMl && nick.status === "found" && nick.name) formData["Nickname"] = nick.name;
     const metaParts = Object.keys(formData).map((k) => `${k}: ${formData[k]}`);
     return {
       key: `${p.slug}|${denom.label}|${metaParts.join("|")}`,
@@ -142,6 +177,34 @@ export default function DetailClient({ product: p }) {
                   <p className="err">Kolom ini wajib diisi.</p>
                 </div>
               ))}
+              {canCheckMl && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={checkNickname}
+                    disabled={nick.status === "loading"}
+                  >
+                    {nick.status === "loading" ? "Mengecek…" : "Cek Nickname"}
+                  </button>
+                  {nick.status === "found" && (
+                    <p style={{ marginTop: 8, color: "#5FE08C", fontWeight: 700 }}>
+                      Nickname: {nick.name}
+                      {nick.country ? (
+                        <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {nick.country}</span>
+                      ) : null}
+                    </p>
+                  )}
+                  {nick.status === "notfound" && (
+                    <p style={{ marginTop: 8, color: "#FF6B7A" }}>{nick.error}</p>
+                  )}
+                  {nick.status === "error" && (
+                    <p className="hint" style={{ marginTop: 8 }}>
+                      {nick.error} Kamu tetap bisa lanjut checkout — pastikan ID yang kamu isi sudah benar.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
