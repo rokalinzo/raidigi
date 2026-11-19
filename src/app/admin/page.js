@@ -31,6 +31,7 @@ function blankProduct() {
     price: 0, compare_at_price: 0, stock: "", image: "", image_alt: "", description: "",
     specsText: "", denoms: [{ label: "", price: 0, note: "" }], form_fields: [],
     popular: false, qty_allowed: false, is_sample: false, active: true, sort_order: 0,
+    supplier_sku: "",
   };
 }
 
@@ -116,6 +117,20 @@ export default function AdminPage() {
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
     setState("login");
+  }
+
+  async function retryFulfill(order) {
+    const res = await fetch("/api/admin/fulfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: order.code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || "Gagal memicu pengiriman otomatis.");
+      return;
+    }
+    if (data.order) setOrders((prev) => prev.map((o) => (o.id === order.id ? data.order : o)));
   }
 
   async function changeStatus(order, to) {
@@ -371,6 +386,13 @@ export default function AdminPage() {
                         {o.items.map((it, i) => (
                           <div key={i} style={{ marginBottom: 6 }}>
                             {it.product_name} — {it.variant_label} × {it.qty}
+                            {it.supplier_status && (
+                              <div style={{ color: "var(--muted)", fontSize: ".78rem" }}>
+                                Otomatis (Digiflazz): <b>{it.supplier_status}</b>
+                                {it.supplier_sn ? ` · SN ${it.supplier_sn}` : ""}
+                                {it.supplier_ref ? ` · Ref ${it.supplier_ref}` : ""}
+                              </div>
+                            )}
                             {Object.keys(it.form_data || {}).length > 0 && (
                               <ul className="formdata-list">
                                 {Object.entries(it.form_data).map(([k, v]) => (
@@ -394,6 +416,12 @@ export default function AdminPage() {
                               {a.label}
                             </button>
                           ))}
+                          {["dibayar", "diproses"].includes(o.status) &&
+                            o.items.some((it) => it.supplier_ref || it.supplier_status) && (
+                              <button className="btn btn-ghost btn-sm" onClick={() => retryFulfill(o)}>
+                                Cek Kirim Otomatis
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -469,7 +497,15 @@ export default function AdminPage() {
                   <label>Gambar (URL gambar atau data URI)</label>
                   <input className="input" value={editing.image || ""} onChange={(e) => setEditing({ ...editing, image: e.target.value })} />
                 </div>
+                <div className="field">
+                  <label>SKU Digiflazz (opsional — pengiriman otomatis)</label>
+                  <input className="input" value={editing.supplier_sku || ""} onChange={(e) => setEditing({ ...editing, supplier_sku: e.target.value })} placeholder="buyer_sku_code dari daftar harga Digiflazz" />
+                </div>
               </div>
+              <p className="hint" style={{ marginTop: -6, marginBottom: 12 }}>
+                Bila SKU Digiflazz diisi, produk ini dikirim OTOMATIS oleh Digiflazz begitu pembayaran pembeli masuk
+                (memakai User ID/Zone ID yang diisi pembeli). Kosongkan untuk produk yang diproses manual.
+              </p>
               <div className="field">
                 <label>Deskripsi</label>
                 <textarea className="input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />

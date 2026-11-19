@@ -75,6 +75,7 @@ export function normalizeProduct(row) {
     qty_allowed: !!row.qty_allowed,
     is_sample: !!row.is_sample,
     active: row.active !== false,
+    supplier_sku: row.supplier_sku || "",
   };
 }
 
@@ -143,6 +144,7 @@ export async function ensureDb() {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )`;
+      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_sku TEXT NOT NULL DEFAULT ''`;
       await sql`
         CREATE TABLE IF NOT EXISTS promos (
           id SERIAL PRIMARY KEY,
@@ -167,6 +169,9 @@ export async function ensureDb() {
           qty INTEGER NOT NULL DEFAULT 1,
           form_data JSONB NOT NULL DEFAULT '{}'
         )`;
+      await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS supplier_ref TEXT`;
+      await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS supplier_status TEXT`;
+      await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS supplier_sn TEXT`;
       const [{ count }] = await sql`SELECT COUNT(*)::int AS count FROM products`;
       if (count === 0) {
         for (let i = 0; i < SEED_PRODUCTS.length; i++) {
@@ -227,12 +232,12 @@ export async function adminCreateProduct(p) {
   const rows = await sql`
     INSERT INTO products (slug, name, game, category, category_label, type, price, compare_at_price,
       stock, image, image_alt, description, badge, specs, denoms, form_fields, tile, popular,
-      qty_allowed, is_sample, active, sort_order)
+      qty_allowed, is_sample, active, sort_order, supplier_sku)
     VALUES (${p.slug}, ${p.name}, ${p.game || ""}, ${p.category}, ${p.category_label || ""}, ${p.type}, ${p.price},
       ${p.compare_at_price || 0}, ${p.stock}, ${p.image || null}, ${p.image_alt || ""}, ${p.description || ""},
       ${p.category_label || ""}, ${JSON.stringify(p.specs || [])}, ${JSON.stringify(p.denoms || [])},
       ${JSON.stringify(p.form_fields || [])}, ${p.tile ? JSON.stringify(p.tile) : null}, ${!!p.popular},
-      ${!!p.qty_allowed}, ${!!p.is_sample}, ${p.active !== false}, ${p.sort_order || 0})
+      ${!!p.qty_allowed}, ${!!p.is_sample}, ${p.active !== false}, ${p.sort_order || 0}, ${p.supplier_sku || ""})
     RETURNING *`;
   return normalizeProduct(rows[0]);
 }
@@ -250,7 +255,7 @@ export async function adminUpdateProduct(id, p) {
       denoms = ${JSON.stringify(p.denoms || [])}, form_fields = ${JSON.stringify(p.form_fields || [])},
       tile = ${p.tile ? JSON.stringify(p.tile) : null}, popular = ${!!p.popular}, qty_allowed = ${!!p.qty_allowed},
       is_sample = ${!!p.is_sample}, active = ${p.active !== false}, sort_order = ${p.sort_order || 0},
-      updated_at = now()
+      supplier_sku = ${p.supplier_sku || ""}, updated_at = now()
     WHERE id = ${id}
     RETURNING *`;
   return rows.length ? normalizeProduct(rows[0]) : null;
@@ -499,5 +504,76 @@ export async function setOrderStatus(orderId, status) {
   await ensureDb();
   const rows = await sql`
     UPDATE orders SET status = ${status}, updated_at = now() WHERE id = ${orderId} RETURNING id`;
+  return rows.length > 0;
+}
+
+/* ---------------- Fulfillment otomatis (Digiflazz) ----------------
+   Item pesanan yang produknya punya supplier_sku dikirim otomatis ke
+   Digiflazz begitu pesanan dibayar. supplier_ref adalah ref_id unik
+   per item ("<kode pesanan>-<id item>") dan menjadi jangkar idempotensi:
+   item yang sudah punya supplier_ref tidak pernah dikirim ulang. */
+
+export async function getFulfillmentItems(orderId) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    SELECT oi.id AS item_id, oi.product_id, oi.product_name, oi.qty, oi.form_data,
+      oi.supplier_ref, oi.supplier_status, oi.supplier_sn, p.supplier_sku
+    FROM order_items oi
+    LEFT JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id = ${orderId}
+    ORDER BY oi.id ASC`;
+  return rows.map((r) => ({ ...r, form_data: parseJson(r.form_data, {}) }));
+}
+
+/* Klaim satu item untuk dikirim (hanya berhasil bila belum pernah
+   diklaim) — mencegah pengiriman ganda saat webhook & polling balapan. */
+export async function claimItemSupplierRef(itemId, ref) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    UPDATE order_items SET supplier_ref = ${ref}, supplier_status = 'Mengirim'
+    WHERE id = ${itemId} AND supplier_ref IS NULL
+    RETURNING id`;
+  return rows.length > 0;
+}
+
+export async function setItemSupplierResult(itemId, { status, sn }) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  await sql`
+    UPDATE order_items SET supplier_status = ${status}, supplier_sn = ${sn || null}
+    WHERE id = ${itemId}`;
+}
+
+export async function getItemBySupplierRef(ref) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    SELECT oi.id AS item_id, oi.order_id, oi.form_data, oi.supplier_status, oi.supplier_sn,
+      p.supplier_sku, o.code AS order_code, o.status AS order_status
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    LEFT JOIN products p ON p.id = oi.product_id
+    WHERE oi.supplier_ref = ${ref}
+    LIMIT 1`;
+  if (!rows.length) return null;
+  return { ...rows[0], form_data: parseJson(rows[0].form_data, {}) };
+}
+
+/* Ubah status pesanan hanya dari status tertentu (transisi bersyarat,
+   aman dari balapan webhook/polling/admin). */
+export async function setOrderStatusIf(orderId, from, to) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    UPDATE orders SET status = ${to}, updated_at = now()
+    WHERE id = ${orderId} AND status = ${from}
+    RETURNING id`;
   return rows.length > 0;
 }

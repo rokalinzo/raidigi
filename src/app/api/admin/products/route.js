@@ -57,6 +57,7 @@ export function sanitizeProduct(body, { requireSlug }) {
     is_sample: !!body.is_sample,
     active: body.active !== false,
     sort_order: int(body.sort_order),
+    supplier_sku: str(body.supplier_sku, 60),
     _valid: (!requireSlug || slug.length >= 2) && str(body.name, 160).length >= 2,
   };
 }
