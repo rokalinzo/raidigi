@@ -146,6 +146,20 @@ export default function AdminPage() {
     loadAll();
   }
 
+  async function deleteProduct(p) {
+    const yakin = window.confirm(
+      `Hapus permanen produk "${p.name}"?\n\nProduk akan hilang dari panel admin dan etalase, dan tidak bisa dibatalkan. Riwayat pesanan lama tetap aman karena nama produk tersimpan di pesanannya.`
+    );
+    if (!yakin) return;
+    const res = await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || "Gagal menghapus produk.");
+      return;
+    }
+    setProducts((prev) => prev.filter((x) => x.id !== p.id));
+  }
+
   if (state === "loading") {
     return (
       <div className="wrap">
@@ -443,9 +457,14 @@ export default function AdminPage() {
                         {p.is_sample && <span className="chip-static">Contoh</span>}
                       </td>
                       <td>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setEditing(toForm(p))}>
-                          Ubah
-                        </button>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(toForm(p))}>
+                            Ubah
+                          </button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => deleteProduct(p)}>
+                            Hapus
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "../../../../../lib/auth";
-import { adminUpdateProduct, listProducts } from "../../../../../lib/db";
+import { adminDeleteProduct, adminUpdateProduct, listProducts } from "../../../../../lib/db";
 import { sanitizeProduct } from "../route";
 
 export const dynamic = "force-dynamic";
@@ -31,5 +31,22 @@ export async function PUT(req, { params }) {
     if (e.code === "NO_DB")
       return NextResponse.json({ error: "Database belum dikonfigurasi di server." }, { status: 503 });
     return NextResponse.json({ error: "Gagal menyimpan produk." }, { status: 500 });
+  }
+}
+
+export async function DELETE(req, { params }) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Tidak berwenang." }, { status: 401 });
+  const { id } = await params;
+  const pid = parseInt(id, 10);
+  if (!pid) return NextResponse.json({ error: "ID produk tidak valid." }, { status: 422 });
+
+  try {
+    const deleted = await adminDeleteProduct(pid);
+    if (!deleted) return NextResponse.json({ error: "Produk tidak ditemukan." }, { status: 404 });
+    return NextResponse.json({ ok: true, deleted: { id: deleted.id, name: deleted.name } });
+  } catch (e) {
+    if (e.code === "NO_DB")
+      return NextResponse.json({ error: "Database belum dikonfigurasi di server." }, { status: 503 });
+    return NextResponse.json({ error: "Gagal menghapus produk." }, { status: 500 });
   }
 }

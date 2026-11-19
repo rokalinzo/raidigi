@@ -210,6 +210,20 @@ export async function adminUpdateProduct(id, p) {
   return rows.length ? normalizeProduct(rows[0]) : null;
 }
 
+export async function adminDeleteProduct(id) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`SELECT id, name FROM products WHERE id = ${id} LIMIT 1`;
+  if (!rows.length) return null;
+  // Riwayat pesanan menyimpan nama & harga produk sebagai snapshot di
+  // order_items, jadi referensi product_id aman dilepas sebelum produk
+  // dihapus permanen — riwayat transaksi tidak rusak.
+  await sql`UPDATE order_items SET product_id = NULL WHERE product_id = ${id}`;
+  await sql`DELETE FROM products WHERE id = ${id}`;
+  return rows[0];
+}
+
 /* ---------------- Users ---------------- */
 
 export async function createUser({ name, email, passwordHash }) {
