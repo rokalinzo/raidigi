@@ -1,4 +1,29 @@
-/* Sprite ikon SVG (gaya Lucide, stroke) — sama dengan situs statis RaiDigi. */
+/* Sprite ikon SVG (gaya Lucide, stroke) — sama dengan situs statis RaiDigi.
+   Sebagian nama punya padanan di Jiggicons (lihat jiggicons-map.js) dan
+   dirender sebagai komponen Jiggicons; sisanya tetap dari sprite ini. */
+
+import { JiggiIcon } from "./jiggicons-map";
+
+/* Harus selaras dengan MAP di jiggicons-map.js. */
+const JIGGI_NAMES = new Set([
+  "i-home",
+  "i-cart",
+  "i-receipt",
+  "i-bell",
+  "i-clock",
+  "i-gift",
+  "i-heart",
+  "i-mail",
+  "i-phone",
+  "i-msg",
+  "i-music",
+  "i-gem",
+  "i-zap",
+  "i-coins",
+  "i-monitor",
+  "i-crown",
+  "i-package",
+]);
 
 const SYMBOLS = `
 <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
@@ -56,6 +81,9 @@ export function IconSprite() {
 }
 
 export function Icon({ name, cls = "" }) {
+  if (JIGGI_NAMES.has(name)) {
+    return <JiggiIcon name={name} cls={cls} />;
+  }
   return (
     <svg className={"icon " + cls} aria-hidden="true">
       <use href={"#" + name} />
