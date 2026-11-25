@@ -196,6 +196,40 @@ export async function ensureDb() {
       await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS supplier_ref TEXT`;
       await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS supplier_status TEXT`;
       await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS supplier_sn TEXT`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS itemku_product_map (
+          id SERIAL PRIMARY KEY,
+          itemku_product_id BIGINT UNIQUE NOT NULL,
+          itemku_product_name TEXT NOT NULL DEFAULT '',
+          product_id INTEGER REFERENCES products(id),
+          variant_label TEXT NOT NULL DEFAULT '',
+          sku TEXT NOT NULL DEFAULT '',
+          active BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS itemku_orders (
+          id SERIAL PRIMARY KEY,
+          itemku_order_id BIGINT UNIQUE NOT NULL,
+          order_number TEXT NOT NULL DEFAULT '',
+          itemku_product_id BIGINT,
+          product_name TEXT NOT NULL DEFAULT '',
+          required_information JSONB NOT NULL DEFAULT '{}',
+          customer_no TEXT NOT NULL DEFAULT '',
+          sku TEXT NOT NULL DEFAULT '',
+          qty INTEGER NOT NULL DEFAULT 1,
+          price INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'baru',
+          supplier_ref TEXT,
+          supplier_status TEXT,
+          supplier_sn TEXT,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT NOT NULL DEFAULT '',
+          raw JSONB NOT NULL DEFAULT '{}',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
       const [{ count }] = await sql`SELECT COUNT(*)::int AS count FROM products`;
       if (count === 0) {
         for (let i = 0; i < SEED_PRODUCTS.length; i++) {
@@ -615,4 +649,119 @@ export async function setOrderStatusIf(orderId, from, to) {
     WHERE id = ${orderId} AND status = ${from}
     RETURNING id`;
   return rows.length > 0;
+}
+
+/* ===== Itemku (Tokoku Open API) — kanal penjualan marketplace =====
+   Pemetaan produk Itemku → SKU Digiflazz dan jurnal order Itemku yang
+   diproses sistem. Order Itemku TIDAK masuk tabel orders (itu pesanan
+   situs sendiri); fulfillment-nya menumpang mesin Digiflazz yang sama. */
+
+export async function listItemkuMap() {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  return sql`
+    SELECT m.*, p.slug AS product_slug, p.name AS product_name_rai
+    FROM itemku_product_map m
+    LEFT JOIN products p ON p.id = m.product_id
+    ORDER BY m.id ASC`;
+}
+
+export async function upsertItemkuMap({ itemku_product_id, itemku_product_name, product_id, variant_label, sku, active }) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    INSERT INTO itemku_product_map (itemku_product_id, itemku_product_name, product_id, variant_label, sku, active)
+    VALUES (${Number(itemku_product_id)}, ${itemku_product_name || ""}, ${product_id ? Number(product_id) : null},
+      ${variant_label || ""}, ${sku || ""}, ${active !== false})
+    ON CONFLICT (itemku_product_id) DO UPDATE SET
+      itemku_product_name = EXCLUDED.itemku_product_name,
+      product_id = EXCLUDED.product_id,
+      variant_label = EXCLUDED.variant_label,
+      sku = EXCLUDED.sku,
+      active = EXCLUDED.active,
+      updated_at = now()
+    RETURNING *`;
+  return rows[0];
+}
+
+/* SKU Digiflazz efektif untuk satu produk Itemku: SKU eksplisit di
+   pemetaan menang; kalau kosong, turunkan dari produk RaiDigi tertaut
+   (SKU denominasi sesuai variant_label, lalu SKU level produk). */
+export async function resolveItemkuSku(itemkuProductId) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    SELECT m.sku AS map_sku, m.variant_label, p.supplier_sku, p.denoms
+    FROM itemku_product_map m
+    LEFT JOIN products p ON p.id = m.product_id
+    WHERE m.itemku_product_id = ${Number(itemkuProductId)} AND m.active = true
+    LIMIT 1`;
+  if (!rows.length) return "";
+  const r = rows[0];
+  if (r.map_sku) return r.map_sku;
+  const denoms = parseJson(r.denoms, []);
+  const denom = Array.isArray(denoms)
+    ? denoms.find((d) => d && d.label === r.variant_label)
+    : null;
+  return (denom && denom.sku) || r.supplier_sku || "";
+}
+
+/* Klaim satu order Itemku untuk diproses (unik per itemku_order_id —
+   callback dan polling yang balapan tidak memproses dua kali).
+   Mengembalikan baris baru, atau null bila order sudah pernah diklaim. */
+export async function claimItemkuOrder(o) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    INSERT INTO itemku_orders (itemku_order_id, order_number, itemku_product_id, product_name,
+      required_information, qty, price, status, raw)
+    VALUES (${Number(o.order_id)}, ${o.order_number || ""}, ${o.product_id ? Number(o.product_id) : null},
+      ${o.product_name || ""}, ${JSON.stringify(o.required_information || {})},
+      ${Math.max(1, Number(o.quantity || o.qty || 1))}, ${Number(o.price || 0)}, 'baru',
+      ${JSON.stringify(o.raw || o)})
+    ON CONFLICT (itemku_order_id) DO NOTHING
+    RETURNING *`;
+  return rows.length ? rows[0] : null;
+}
+
+export async function getItemkuOrder(itemkuOrderId) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const rows = await sql`
+    SELECT * FROM itemku_orders WHERE itemku_order_id = ${Number(itemkuOrderId)} LIMIT 1`;
+  return rows.length ? rows[0] : null;
+}
+
+export async function updateItemkuOrder(id, fields) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  const allowed = ["status", "customer_no", "sku", "supplier_ref", "supplier_status", "supplier_sn", "attempts", "last_error"];
+  const sets = [];
+  const vals = [];
+  for (const k of allowed) {
+    if (fields[k] !== undefined) {
+      sets.push(`${k} = $${sets.length + 1}`);
+      vals.push(fields[k]);
+    }
+  }
+  if (!sets.length) return null;
+  const rows = await sql.query(
+    `UPDATE itemku_orders SET ${sets.join(", ")}, updated_at = now() WHERE id = $${sets.length + 1} RETURNING *`,
+    [...vals, id]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+export async function listItemkuOrdersByStatus(statuses) {
+  const sql = getSql();
+  if (!sql) throw noDbError();
+  await ensureDb();
+  return sql`
+    SELECT * FROM itemku_orders WHERE status = ANY(${statuses}) ORDER BY id ASC LIMIT 50`;
 }
