@@ -543,12 +543,27 @@ export async function getFulfillmentItems(orderId) {
   await ensureDb();
   const rows = await sql`
     SELECT oi.id AS item_id, oi.product_id, oi.product_name, oi.qty, oi.form_data,
-      oi.supplier_ref, oi.supplier_status, oi.supplier_sn, p.supplier_sku
+      oi.variant_label, oi.supplier_ref, oi.supplier_status, oi.supplier_sn,
+      p.supplier_sku, p.denoms
     FROM order_items oi
     LEFT JOIN products p ON p.id = oi.product_id
     WHERE oi.order_id = ${orderId}
     ORDER BY oi.id ASC`;
-  return rows.map((r) => ({ ...r, form_data: parseJson(r.form_data, {}) }));
+  return rows.map((r) => {
+    /* SKU efektif per item: denominasi yang dipilih pembeli dapat membawa
+       SKU Digiflazz sendiri (produk gabungan "Produk > Jumlah"); bila
+       denominasi tidak punya SKU, pakai SKU level produk seperti semula. */
+    const denoms = parseJson(r.denoms, []);
+    const denom = Array.isArray(denoms)
+      ? denoms.find((d) => d && d.label === r.variant_label)
+      : null;
+    const { denoms: _denoms, ...rest } = r;
+    return {
+      ...rest,
+      supplier_sku: (denom && denom.sku) || r.supplier_sku || "",
+      form_data: parseJson(r.form_data, {}),
+    };
+  });
 }
 
 /* Klaim satu item untuk dikirim (hanya berhasil bila belum pernah

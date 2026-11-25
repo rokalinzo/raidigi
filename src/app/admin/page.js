@@ -29,7 +29,7 @@ function blankProduct() {
   return {
     slug: "", name: "", game: "", category: "topup", category_label: "Topup", type: "topup",
     price: 0, compare_at_price: 0, stock: "", image: "", image_alt: "", description: "",
-    specsText: "", denoms: [{ label: "", price: 0, note: "" }], form_fields: [],
+    specsText: "", denoms: [{ label: "", price: 0, note: "", sku: "" }], form_fields: [],
     popular: false, qty_allowed: false, is_sample: false, active: true, sort_order: 0,
     supplier_sku: "",
   };
@@ -41,7 +41,7 @@ function toForm(p) {
     stock: p.stock === null ? "" : p.stock,
     specsText: (p.specs || []).join("\n"),
     denoms: (p.denoms && p.denoms.length ? p.denoms : [{ label: p.name, price: p.price }]).map((d) => ({
-      label: d.label, price: d.price, note: d.note || "",
+      label: d.label, price: d.price, note: d.note || "", sku: d.sku || "",
     })),
     form_fields: (p.form_fields || []).map((f) => ({
       key: f.key || "", label: f.label || "", ph: f.ph || "", hint: f.hint || "", required: !!f.required,
@@ -517,16 +517,17 @@ export default function AdminPage() {
               <div className="field">
                 <label>Denominasi / Paket (harga produk = denominasi termurah)</label>
                 {editing.denoms.map((d, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr auto", gap: 8, marginBottom: 8 }}>
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr 1.2fr auto", gap: 8, marginBottom: 8 }}>
                     <input className="input" placeholder="Label" value={d.label} onChange={(e) => { const denoms = [...editing.denoms]; denoms[i] = { ...d, label: e.target.value }; setEditing({ ...editing, denoms }); }} />
                     <input className="input" type="number" min="0" placeholder="Harga" value={d.price} onChange={(e) => { const denoms = [...editing.denoms]; denoms[i] = { ...d, price: e.target.value }; setEditing({ ...editing, denoms }); }} />
                     <input className="input" placeholder="Catatan (opsional)" value={d.note} onChange={(e) => { const denoms = [...editing.denoms]; denoms[i] = { ...d, note: e.target.value }; setEditing({ ...editing, denoms }); }} />
+                    <input className="input" placeholder="SKU Digiflazz (opsional)" value={d.sku || ""} onChange={(e) => { const denoms = [...editing.denoms]; denoms[i] = { ...d, sku: e.target.value }; setEditing({ ...editing, denoms }); }} />
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, denoms: editing.denoms.filter((_, x) => x !== i) })}>
                       Hapus
                     </button>
                   </div>
                 ))}
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, denoms: [...editing.denoms, { label: "", price: 0, note: "" }] })}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, denoms: [...editing.denoms, { label: "", price: 0, note: "", sku: "" }] })}>
                   + Denominasi
                 </button>
               </div>

@@ -25,6 +25,7 @@ export function sanitizeProduct(body, { requireSlug }) {
       label: String(d.label || "").slice(0, 120),
       price: Math.max(0, int(d.price)),
       ...(d.note ? { note: String(d.note).slice(0, 200) } : {}),
+      ...(d.sku ? { sku: String(d.sku).slice(0, 60) } : {}),
     }))
     .filter((d) => d.label);
   const formFields = (Array.isArray(body.form_fields) ? body.form_fields : []).map((f) => ({
