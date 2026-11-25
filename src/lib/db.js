@@ -59,13 +59,37 @@ function defaultTopupFields(row) {
 export function normalizeProduct(row) {
   if (!row) return null;
   const parsedFields = parseJson(row.form_fields, []);
+  const basePrice = Number(row.price) || 0;
+  /* Normalisasi harga denominasi di satu-satunya jalur baca produk, supaya
+     halaman produk, keranjang, dan checkout selalu memakai harga yang sama
+     dengan daftar produk:
+     - denom tanpa price (format lama {label, delta}) memakai harga produk + delta;
+     - produk satu denominasi: harga denom selalu = harga produk, jadi harga
+       tidak pernah basi sebelah bila salah satu kolom berubah;
+     - produk banyak denominasi: harga produk = denominasi termurah
+       (sesuai aturan form admin). */
+  let denoms = parseJson(row.denoms, []).map((d) => {
+    if (!d || typeof d !== "object") return d;
+    let p = Number(d.price);
+    if (!Number.isFinite(p)) p = basePrice + (Number(d.delta) || 0);
+    return { ...d, price: p };
+  });
+  let price = basePrice;
+  if (denoms.length === 1 && denoms[0] && typeof denoms[0] === "object") {
+    denoms = [{ ...denoms[0], price: basePrice }];
+  } else if (denoms.length > 1) {
+    const prices = denoms
+      .map((d) => (d && typeof d === "object" ? d.price : NaN))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (prices.length) price = Math.min(...prices);
+  }
   return {
     ...row,
-    price: Number(row.price),
+    price,
     compare_at_price: Number(row.compare_at_price || 0),
     stock: row.stock === null || row.stock === undefined ? null : Number(row.stock),
     specs: parseJson(row.specs, []),
-    denoms: parseJson(row.denoms, []),
+    denoms,
     form_fields:
       row.type === "topup" && (!parsedFields || parsedFields.length === 0)
         ? defaultTopupFields(row)
