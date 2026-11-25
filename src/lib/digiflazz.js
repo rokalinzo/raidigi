@@ -34,9 +34,13 @@ async function post(path, body) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 12000);
   try {
+    const headers = { "Content-Type": "application/json" };
+    // Relay ber-IP statis (DIGIFLAZZ_API_BASE override) mengunci aksesnya
+    // dengan kunci bersama ini; ke Digiflazz langsung header tidak dikirim.
+    if (process.env.DIGIFLAZZ_RELAY_KEY) headers["x-relay-key"] = process.env.DIGIFLAZZ_RELAY_KEY;
     const res = await fetch(`${apiBase()}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
       signal: ctrl.signal,
       cache: "no-store",
